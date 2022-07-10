@@ -289,7 +289,7 @@ module.exports = {
     }
 
     // Look for explicitly specified `where` parameter.
-    var where = req.params.where;
+    var where = req.allParams().where;
 
     // If `where` parameter is a string, try to interpret it as JSON
     if (isString(where)) {
@@ -301,7 +301,7 @@ module.exports = {
     if (!where) {
       // Prune params which aren't fit to be used as `where` criteria
       // to build a proper where query
-      where = req.params;
+      where = req.allParams();
 
       // Omit built-in runtime config (like query modifiers)
       where = omit(where, blacklist || ['limit', 'skip', 'sort']);
