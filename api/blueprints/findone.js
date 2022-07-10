@@ -1,8 +1,7 @@
 /**
  * Module dependencies
  */
-var util = require('util'),
-  actionUtil = require('./_util/actionUtil');
+const actionUtil = require('./_util/actionUtil');
 
 /**
  * Enable sideloading. Edit config/blueprints.js and add:
@@ -32,15 +31,23 @@ var performSideload =
  */
 
 module.exports = function findOneRecord(req, res) {
-  var Model = actionUtil.parseModel(req);
+  const Model = actionUtil.parseModel(req);
   var pk = actionUtil.requirePk(req);
 
-  var query = Model.findOne(pk);
-  query = actionUtil.populateEach(query, req);
+  const parseBlueprintOptions =
+    req.options.parseBlueprintOptions ||
+    req._sails.config.blueprints.parseBlueprintOptions;
+  const queryOptions = parseBlueprintOptions(req);
+
+  var query = Model.findOne(pk, queryOptions.populates);
+  query = actionUtil.populateEach(query, Model.associations, queryOptions);
   query.exec(function found(err, matchingRecord) {
-    if (err) return res.serverError(err);
-    if (!matchingRecord)
+    if (err) {
+      return res.serverError(err);
+    }
+    if (!matchingRecord) {
       return res.notFound('No record found with the specified `id`.');
+    }
 
     if (sails.hooks.pubsub && req.isSocket) {
       Model.subscribe(req, matchingRecord);
@@ -51,7 +58,7 @@ module.exports = function findOneRecord(req, res) {
       actionUtil.emberizeJSON(
         Model,
         matchingRecord,
-        req.options.associations,
+        Model.associations,
         performSideload
       )
     );

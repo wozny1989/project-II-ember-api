@@ -5,7 +5,6 @@ const {
   uniq,
   forEach,
   pluck,
-  includes,
   isArray,
   isString,
   isPlainObject,
@@ -57,7 +56,7 @@ module.exports = {
 
     if (sideload) {
       // prepare for sideloading
-      forEach(associations, function (assoc) {
+      forEach(associations, (assoc) => {
         var assocName;
         if (assoc.type === 'collection') {
           assocName = pluralize(
@@ -77,7 +76,7 @@ module.exports = {
     var prepareOneRecord = function (record) {
       // get rid of the record's prototype ( otherwise the .toJSON called in res.send would re-insert embedded records)
       record = create({}, record);
-      forEach(associations, function (assoc) {
+      forEach(associations, (assoc) => {
         var assocName;
         if (assoc.type === 'collection') {
           assocName = pluralize(
@@ -92,13 +91,15 @@ module.exports = {
           record[assoc.alias] &&
           record[assoc.alias].length > 0
         ) {
-          if (sideload)
+          if (sideload) {
             json[assocName] = json[assocName].concat(record[assoc.alias]);
+          }
           record[assoc.alias] = pluck(record[assoc.alias], 'id');
         }
         if (assoc.type === 'model' && record[assoc.alias]) {
-          if (sideload)
+          if (sideload) {
             json[assocName] = json[assocName].concat(record[assoc.alias]);
+          }
           record[assoc.alias] = record[assoc.alias].id;
         }
       });
@@ -107,7 +108,7 @@ module.exports = {
 
     // many or just one?
     if (plural) {
-      forEach(records, function (record) {
+      forEach(records, (record) => {
         json[documentIdentifier] = json[documentIdentifier].concat(
           prepareOneRecord(record)
         );
@@ -118,9 +119,11 @@ module.exports = {
 
     if (sideload) {
       // filter duplicates in sideloaded records
-      forEach(json, function (array, key) {
-        if (!plural && key === documentIdentifier) return;
-        json[key] = uniq(array, function (record) {
+      forEach(json, (array, key) => {
+        if (!plural && key === documentIdentifier) {
+          return;
+        }
+        json[key] = uniq(array, (record) => {
           return record.id;
         });
       });
@@ -138,30 +141,28 @@ module.exports = {
    * @param  {Request} req
    * @return {Query}
    */
-  populateEach: function (query, req) {
-    var DEFAULT_POPULATE_LIMIT = sails.config.blueprints.defaultLimit || 30;
-    var _options = req.options;
-    var aliasFilter = req.param('populate');
-    var shouldPopulate = _options.populate;
+  populateEach: function (query, associations, queryOptions) {
+    // var aliasFilter = req.param('populate');
+    var shouldPopulate = queryOptions && queryOptions.populates;
 
     // Convert the string representation of the filter list to an Array. We
     // need this to provide flexibility in the request param. This way both
     // list string representations are supported:
     //   /model?populate=alias1,alias2,alias3
     //   /model?populate=[alias1,alias2,alias3]
-    if (typeof aliasFilter === 'string') {
-      aliasFilter = aliasFilter.replace(/\[|\]/g, '');
-      aliasFilter = aliasFilter ? aliasFilter.split(',') : [];
-    }
+    // if (typeof aliasFilter === 'string') {
+    //   aliasFilter = aliasFilter.replace(/\[|\]/g, '');
+    //   aliasFilter = aliasFilter ? aliasFilter.split(',') : [];
+    // }
 
-    return _(_options.associations).reduce(function populateEachAssociation(
+    return _(associations).reduce(function populateEachAssociation(
       query,
       association
     ) {
       // If an alias filter was provided, override the blueprint config.
-      if (aliasFilter) {
-        shouldPopulate = includes(aliasFilter, association.alias);
-      }
+      // if (aliasFilter) {
+      //   shouldPopulate = includes(aliasFilter, association.alias);
+      // }
 
       // Only populate associations if a population filter has been supplied
       // with the request or if `populate` is set within the blueprint config.
@@ -171,16 +172,10 @@ module.exports = {
       // name of the association attribute, and value is true/false
       // (true to populate, false to not)
       if (shouldPopulate) {
-        var populationLimit =
-          _options['populate_' + association.alias + '_limit'] ||
-          _options.populate_limit ||
-          _options.limit ||
-          DEFAULT_POPULATE_LIMIT;
-
-        return query.populate(association.alias, {
-          limit: populationLimit,
-        });
-      } else return query;
+        return query.populate(association.alias);
+      } else {
+        return query;
+      }
     },
     query);
   },
@@ -193,7 +188,7 @@ module.exports = {
    * @return {[type]}              [description]
    */
   subscribeDeep: function (req, record) {
-    forEach(req.options.associations, function (assoc) {
+    forEach(req.options.associations, (assoc) => {
       // Look up identity of associated model
       var ident = assoc[assoc.type];
       var AssociatedModel = sails.models[ident];
@@ -204,7 +199,7 @@ module.exports = {
 
       // Subscribe to each associated model instance in a collection
       if (assoc.type === 'collection') {
-        forEach(record[assoc.alias], function (associatedInstance) {
+        forEach(record[assoc.alias], (associatedInstance) => {
           AssociatedModel.subscribe(req, associatedInstance);
         });
       }
@@ -252,7 +247,7 @@ module.exports = {
     if (!pk) {
       var err = new Error(
         'No `id` parameter provided.' +
-          "(Note: even if the model's primary key is not named `id`- " +
+          `(Note: even if the model's primary key is not named 'id'- ` +
           '`id` should be used as the name of the parameter- it will be ' +
           'mapped to the proper primary key name)'
       );
@@ -307,8 +302,10 @@ module.exports = {
       where = omit(where, blacklist || ['limit', 'skip', 'sort']);
 
       // Omit any params w/ undefined values
-      where = omit(where, function (p) {
-        if (isUndefined(p)) return true;
+      where = omit(where, (p) => {
+        if (isUndefined(p)) {
+          return true;
+        }
       });
 
       // Transform ids[ .., ..] request
@@ -365,8 +362,10 @@ module.exports = {
     values = omit(values, blacklist || []);
 
     // Omit any params w/ undefined values
-    values = omit(values, function (p) {
-      if (isUndefined(p)) return true;
+    values = omit(values, (p) => {
+      if (isUndefined(p)) {
+        return true;
+      }
     });
 
     // Omit jsonp callback param (but only if jsonp is enabled)
@@ -391,17 +390,19 @@ module.exports = {
   parseModel: function (req) {
     // Ensure a model can be deduced from the request options.
     var model = req.options.model || req.options.controller;
-    if (!model)
+    if (!model) {
       throw new Error(util.format('No "model" specified in route options.'));
+    }
 
     var Model = req._sails.models[model.toLowerCase()];
-    if (!Model)
+    if (!Model) {
       throw new Error(
         util.format(
           'Invalid route option, "model".\nI don\'t know about any models named: `%s`',
           model
         )
       );
+    }
 
     return Model;
   },
@@ -455,7 +456,9 @@ module.exports = {
 // If JSON is falsey, return null
 // (this is so that it will be ignored if not specified)
 function tryToParseJSON(json) {
-  if (!isString(json)) return null;
+  if (!isString(json)) {
+    return null;
+  }
   try {
     return JSON.parse(json);
   } catch (e) {

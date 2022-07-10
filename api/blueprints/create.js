@@ -20,6 +20,11 @@ module.exports = function createRecord(req, res) {
   const Model = actionUtil.parseModel(req);
   const data = actionUtil.parseValues(req, Model);
 
+  const parseBlueprintOptions =
+    req.options.parseBlueprintOptions ||
+    req._sails.config.blueprints.parseBlueprintOptions;
+  const queryOptions = parseBlueprintOptions(req);
+
   /* if ( req.user && req.user.id ) {
    sails.log.debug( 'Injecting req.user into blueprint create -> data.' );
    data.user = req.user.id;
@@ -50,8 +55,11 @@ module.exports = function createRecord(req, res) {
       }
 
       // Do a final query to populate the associations of the record.
-      var Q = Model.findOne(newInstance[Model.primaryKey]);
-      Q = actionUtil.populateEach(Q, req);
+      var Q = Model.findOne(
+        newInstance[Model.primaryKey],
+        queryOptions.populates
+      );
+      populatesQ = actionUtil.populateEach(Q, Model.associations, queryOptions);
       Q.exec(function foundAgain(err, populatedRecord) {
         if (err) {
           return res.serverError(err);
@@ -67,7 +75,7 @@ module.exports = function createRecord(req, res) {
           actionUtil.emberizeJSON(
             Model,
             populatedRecord,
-            req.options.associations,
+            Model.associations,
             false
           )
         );

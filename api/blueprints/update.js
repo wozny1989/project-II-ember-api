@@ -30,7 +30,12 @@ var performSideload =
  */
 module.exports = function updateOneRecord(req, res) {
   // Look up the model
-  var Model = actionUtil.parseModel(req);
+  const Model = actionUtil.parseModel(req);
+
+  const parseBlueprintOptions =
+    req.options.parseBlueprintOptions ||
+    req._sails.config.blueprints.parseBlueprintOptions;
+  const queryOptions = parseBlueprintOptions(req);
 
   // Locate and validate the required `id` parameter.
   var pk = actionUtil.requirePk(req);
@@ -50,8 +55,12 @@ module.exports = function updateOneRecord(req, res) {
   //  is used first to provide a better experience for front-end developers
   //  integrating with the blueprint API.)
   Model.findOne(pk).exec(function found(err, matchingRecord) {
-    if (err) return res.serverError(err);
-    if (!matchingRecord) return res.notFound();
+    if (err) {
+      return res.serverError(err);
+    }
+    if (!matchingRecord) {
+      return res.notFound();
+    }
 
     Model.update(pk, values)
       .fetch()
@@ -59,7 +68,9 @@ module.exports = function updateOneRecord(req, res) {
         // Differentiate between waterline-originated validation errors
         // and serious underlying issues. Respond with badRequest if a
         // validation error is encountered, w/ validation info.
-        if (err) return res.negotiate(err);
+        if (err) {
+          return res.negotiate(err);
+        }
 
         // Because this should only update a single record and update
         // returns an array, just use the first item.  If more than one
@@ -93,17 +104,23 @@ module.exports = function updateOneRecord(req, res) {
         // (Note: again, this extra query could be eliminated, but it is
         //  included by default to provide a better interface for integrating
         //  front-end developers.)
-        var Q = Model.findOne(updatedRecord[Model.primaryKey]);
-        Q = actionUtil.populateEach(Q, req);
+        var Q = Model.findOne(
+          updatedRecord[Model.primaryKey],
+          queryOptions.populates
+        );
+        Q = actionUtil.populateEach(Q, Model.associations, queryOptions);
         Q.exec(function foundAgain(err, populatedRecord) {
-          if (err) return res.serverError(err);
-          if (!populatedRecord)
+          if (err) {
+            return res.serverError(err);
+          }
+          if (!populatedRecord) {
             return res.serverError('Could not find record after updating!');
+          }
           res.ok(
             actionUtil.emberizeJSON(
               Model,
               populatedRecord,
-              req.options.associations,
+              Model.associations,
               performSideload
             )
           );

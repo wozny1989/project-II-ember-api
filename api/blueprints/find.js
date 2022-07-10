@@ -35,7 +35,12 @@ var performSideload =
 
 module.exports = function findRecords(req, res) {
   // Look up the model
-  var Model = actionUtil.parseModel(req);
+  const Model = actionUtil.parseModel(req);
+
+  const parseBlueprintOptions =
+    req.options.parseBlueprintOptions ||
+    req._sails.config.blueprints.parseBlueprintOptions;
+  const queryOptions = parseBlueprintOptions(req);
 
   /* ENABLE if needed ( see https://github.com/mphasize/sails-ember-blueprints/issues/3 )
    * ----------------
@@ -55,7 +60,7 @@ module.exports = function findRecords(req, res) {
     .skip(actionUtil.parseSkip(req))
     .sort(actionUtil.parseSort(req));
 
-  query = actionUtil.populateEach(query, req);
+  query = actionUtil.populateEach(query, Model.associations, queryOptions);
   query.exec(function found(err, matchingRecords) {
     if (err) {
       return res.serverError(err);
@@ -78,7 +83,7 @@ module.exports = function findRecords(req, res) {
       actionUtil.emberizeJSON(
         Model,
         matchingRecords,
-        req.options.associations,
+        Model.associations,
         performSideload
       )
     );

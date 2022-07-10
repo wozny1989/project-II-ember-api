@@ -19,11 +19,11 @@ const actionUtil = require('./_util/actionUtil');
  * @param {String} callback - default jsonp callback param (i.e. the name of the js function returned)
  */
 module.exports = function destroyOneRecord(req, res) {
-  var Model = actionUtil.parseModel(req);
+  const Model = actionUtil.parseModel(req);
   var pk = actionUtil.requirePk(req);
 
-  var query = Model.findOne(pk);
-  query = actionUtil.populateEach(query, req);
+  const query = Model.findOne(pk);
+  // query = actionUtil.populateEach(query, Model.associations, queryOptions);
   query.exec(function foundRecord(err, record) {
     if (err) {
       return res.serverError(err);
