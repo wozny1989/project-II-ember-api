@@ -11,6 +11,7 @@
 ## Commands:
 
 - Default run: `npm run start`
+- Drop all collection in db: `npm run dropDB`
 - Reset database & run server: `npm run popDB`
 
 [Sails v1](https://sailsjs.com) application
